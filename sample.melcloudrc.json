@@ -1,0 +1,22 @@
+{
+    "mqtt": {
+        "username": "mqttmelcloudbridge",
+        "password": "junk",
+        "host": "localhost",
+        "port": 1883
+    },
+    "melcloud": {
+        "username": "junk@melcloud",
+        "password": "melclot"
+    },
+    "emoncms": {
+        "posturl": "https://whatever",
+        "apikey": "melclot",
+        "node": "melclot"
+    },
+    "autodiscovery": {
+        "enabled": 1,
+        "all": 1
+    },
+    "default_temperature": 17
+}
