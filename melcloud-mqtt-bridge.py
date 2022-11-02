@@ -95,9 +95,9 @@ mqtt_sensor_config_types = {
 }
 mqtt_sensor_config = """
 {"device_class": "%s",
- "unique_id": "7bbe1d741e15fa45bf202efc1b8fc7e0-%s",
+ "unique_id": "%s-%s",
  "dev": {
-     "ids": "7bbe1d741e15fa45bf202efc1b8fc7e0",
+     "ids": "%s",
      "name": "MELCloud MQTT Bridge",
  },
  "name": "%s",
@@ -106,48 +106,58 @@ mqtt_sensor_config = """
  "value_template": "{{ value_json.%s}}"
 }
 """
-mqtt_control_config = {
-    "name": "MELCloud MQTT",
-    "unique_id": "7bbe1d741e15fa45bf202efc1b8fc7e0",
-    "dev": {
-        "ids": "7bbe1d741e15fa45bf202efc1b8fc7e0",
-        "name": "MELCloud MQTT Bridge",
-    },
-    "modes": ["auto", "heat"],
-    "mode_command_topic": "melcloud/control/mode",
-    "mode_state_topic": "melcloud/status/mode",
-    "json_attributes_topic": "melcloud/status/values",
-    # "json_attributes_template": "{{ value_json }}", is incorrect
-    "precision": 0.5,
-    "temperature_command_topic": "melcloud/control/temperature",
-    "temperature_state_topic": "melcloud/status/values",
-    "temperature_state_template": "{{ value_json.TargetHCTemperatureZone1 }}",
-    "current_temperature_topic": "melcloud/status/values",
-    "current_temperature_template": "{{ value_json.RoomTemperatureZone1 }}",
-    "action_topic": "melcloud/status/action",
-}
-mqtt_water_control_config = {
-    "name": "MELCloud MQTT Hot Water",
-    "unique_id": "7bbe1d741e15fa45bf202efc1b8fc7e0-HW",
-    "dev": {
-        "ids": "7bbe1d741e15fa45bf202efc1b8fc7e0",
-        "name": "MELCloud MQTT Bridge",
-    },
-    "modes": ["auto", "heat"],
-    "mode_command_topic": "melcloud/control/water",
-    "mode_state_topic": "melcloud/status/water",
-    "json_attributes_topic": "melcloud/status/values",
-    # "json_attributes_template": "{{ value_json }}", is incorrect
-    "precision": 1.0,
-    "temperature_command_topic": "melcloud/control/tank_temperature",
-    "temperature_state_topic": "melcloud/status/values",
-    "temperature_state_template": "{{ value_json.SetTankWaterTemperature }}",
-    "current_temperature_topic": "melcloud/status/values",
-    "current_temperature_template": "{{ value_json.TankWaterTemperature }}",
-    "action_topic": "melcloud/status/water_action",
-}
 actions = ["idle", "heating"]
 modes = ["auto", "auto", "heat"]
+
+
+def mqtt_control_config(uid):
+    return({
+        "name": "MELCloud MQTT",
+        "unique_id": uid,
+        "dev": {
+            "ids": uid,
+            "name": "MELCloud MQTT Bridge",
+        },
+        "modes": ["auto", "heat"],
+        "mode_command_topic": "melcloud/control/mode",
+        "mode_state_topic": "melcloud/status/mode",
+        "json_attributes_topic": "melcloud/status/values",
+        # "json_attributes_template": "{{ value_json }}", is incorrect
+        "precision": 0.5,
+        "temperature_command_topic": "melcloud/control/temperature",
+        "temperature_state_topic": "melcloud/status/values",
+        "temperature_state_template":
+            "{{ value_json.TargetHCTemperatureZone1 }}",
+        "current_temperature_topic": "melcloud/status/values",
+        "current_temperature_template":
+            "{{ value_json.RoomTemperatureZone1 }}",
+        "action_topic": "melcloud/status/action",
+    })
+
+
+def mqtt_water_control_config(uid):
+    return({
+        "name": "MELCloud MQTT Hot Water",
+        "unique_id": uid+"-HW",
+        "dev": {
+            "ids": uid,
+            "name": "MELCloud MQTT Bridge",
+        },
+        "modes": ["auto", "heat"],
+        "mode_command_topic": "melcloud/control/water",
+        "mode_state_topic": "melcloud/status/water",
+        "json_attributes_topic": "melcloud/status/values",
+        # "json_attributes_template": "{{ value_json }}", is incorrect
+        "precision": 1.0,
+        "temperature_command_topic": "melcloud/control/tank_temperature",
+        "temperature_state_topic": "melcloud/status/values",
+        "temperature_state_template":
+            "{{ value_json.SetTankWaterTemperature }}",
+        "current_temperature_topic": "melcloud/status/values",
+        "current_temperature_template":
+            "{{ value_json.TankWaterTemperature }}",
+        "action_topic": "melcloud/status/water_action",
+    })
 
 
 async def main():
@@ -169,11 +179,15 @@ async def main():
     if (config["autodiscovery"]["enabled"]):
         mqttc.publish(
             "homeassistant/climate/melcloud/config",
-            json.dumps(mqtt_control_config, separators=(",", ":")),
+            json.dumps(mqtt_control_config(
+                            config["autodiscovery"]["uid"]),
+                       separators=(",", ":")),
             retain=True)
         mqttc.publish(
             "homeassistant/climate/melcloud_water/config",
-            json.dumps(mqtt_water_control_config, separators=(",", ":")),
+            json.dumps(mqtt_water_control_config(
+                            config["autodiscovery"]["uid"]),
+                       separators=(",", ":")),
             retain=True)
         if (config["autodiscovery"]["all"]):
             for key, type in sensor_props.items():
@@ -181,7 +195,9 @@ async def main():
                     "homeassistant/sensor/%s/config" % key.lower(),
                     mqtt_sensor_config % (
                         mqtt_sensor_config_types[type],
+                        config["autodiscovery"]["uid"],
                         key.lower(),
+                        config["autodiscovery"]["uid"],
                         key,
                         type,
                         key),

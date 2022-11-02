@@ -16,6 +16,7 @@
     },
     "autodiscovery": {
         "enabled": 1,
+        "uid": "7bbe1d741e15fa45bf202efc1b8fc7e0",
         "all": 1
     },
     "default_temperature": 17
