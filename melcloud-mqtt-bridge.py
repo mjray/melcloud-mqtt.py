@@ -60,7 +60,7 @@ sensor_props = {
     "SetTankWaterTemperature": "C",
     "TankWaterTemperature": "C",
     "OperationMode": "int",
-    "DefrostMode": "bool",
+    "DefrostMode": "int",
     "FlowTemperature": "C",
     "ReturnTemperature": "C",
     "CurrentEnergyConsumed": "Wh/min",
@@ -116,7 +116,7 @@ def mqtt_control_config(uid):
         "unique_id": uid,
         "dev": {
             "ids": uid,
-            "name": "MELCloud MQTT Bridge",
+            "name": "MELCloud MQTT Bridge"
         },
         "modes": ["auto", "heat"],
         "mode_command_topic": "melcloud/control/mode",
@@ -204,7 +204,7 @@ async def main():
                     retain=True)
 
     buttons = []
-    set_temp = config["default_temperature"]
+    set_temp = None
     async with aiohttp.ClientSession() as session:
         # call the login method with the session
         token = await pymelcloud.login(
@@ -256,15 +256,24 @@ async def main():
                 # consider heating temperature and mode
                 if (not device.holiday_mode
                         and not (device.status == "defrost")):
-                    # Switch main heating between thermostat and curve
+                    # Switch main heating between thermostat, curve and flow
                     # modes based on MQTT commands. Set thermostat
                     # temperature low, like 16 degrees, as a safeguard for
-                    # a dead process or melcloud connection, and we use
+                    # a dead process or melcloud connection, and we can use
                     # heat-thermostat mode here as a proxy for "off".
-                    roomtemp = roomzone.room_temperature
+                    # Temperatures over 26 are regarded as flow targets and
+                    # 26 and below as room targets.
+                    if set_temp and set_temp > 26:
+                        nextmode = "heat-flow"
+                        await roomzone.set_target_heat_flow_temperature(
+                            set_temp)
+                        set_temp = None
+                    elif set_temp and set_temp <= 26:
+                        nextmode = "heat-thermostat"
+                        await roomzone.set_target_temperature(set_temp)
+                        set_temp = None
                     if nextmode != roomzone.operation_mode:
                         await roomzone.set_operation_mode(nextmode)
-                        await roomzone.set_target_temperature(set_temp)
                         log_file_and_mqtt(
                             "%s at %s to %s" % (nextmode, roomtemp, nexttemp),
                             mqttc)
@@ -309,7 +318,7 @@ async def main():
                         sys.stderr.flush()
                 mqttc.publish(
                     "melcloud/status/mode", "heat" if
-                    ((nextmode == "curve")
+                    ((nextmode != "heat-thermostat")
                      or (int(data["OperationMode"]) == 2)) else "auto")
                 mqttc.publish(
                     "melcloud/status/water", "heat" if
@@ -322,7 +331,7 @@ async def main():
         await session.close()
         mqttc.loop_stop()
 print(
-    "%s: Startup logic 20221010 in pid %s" % (datetime.now().isoformat(),
+    "%s: Startup logic 20221219 in pid %s" % (datetime.now().isoformat(),
                                               os.getpid()),
     file=sys.stderr)
 loop = asyncio.get_event_loop()
