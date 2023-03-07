@@ -98,7 +98,7 @@ mqtt_sensor_config = """
  "unique_id": "%s-%s",
  "dev": {
      "ids": "%s",
-     "name": "MELCloud MQTT Bridge",
+     "name": "MELCloud MQTT Bridge"
  },
  "name": "%s",
  "state_topic": "melcloud/status/values",
